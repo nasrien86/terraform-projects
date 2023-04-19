@@ -40,6 +40,12 @@ resource "aws_security_group" "nas-web-sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
@@ -75,17 +81,25 @@ resource "aws_route_table_association" "b" {
   subnet_id      = aws_subnet.my_subnet2.id
   route_table_id = aws_route_table.my_route_table.id
 }
+data "aws_iam_role" "test-ec2-s3object-readonly" {
+  name = "test-ec2-s3object-readonly"
+}
+resource "aws_iam_instance_profile" "demo-profile" {
+  name = "demo_profile"
+  role = data.aws_iam_role.test-ec2-s3object-readonly.name
+}
 
-#With Latest Version Of Launch Template
+#launch configuration for ec2
 resource "aws_launch_configuration" "asg-config" {
   name_prefix                 = "aws-asg"
   image_id                    = "ami-069aabeee6f53e7bf"
   instance_type               = "t2.micro"
   user_data                   = file("user-data.sh")
   security_groups             = [aws_security_group.nas-web-sg.id]
+  iam_instance_profile = aws_iam_instance_profile.demo-profile.name
   associate_public_ip_address = true
-
 }
+
 #create an ALB
 resource "aws_lb" "https-web" {
   name               = "nas-alb-tf"
